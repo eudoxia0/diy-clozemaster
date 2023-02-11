@@ -116,9 +116,27 @@ def sort_pairs(pairs: list[Pair], fra_freq: Counter[str]) -> list[Pair]:
     # Sort pairs from shortest and most common French words. Specifically, we sort by the average frequency of the words in the French sentence, divided by the length of the sentence, in reverse order.
     return sorted(pairs, key=lambda p: avg_freq(p.fra_words, fra_freq) / len(p.fra_words), reverse=True)
 
+#
+# Dump clozes
+#
 
+def dump_clozes(clozes: list[Cloze]):
+    print(f"Compiled {len(clozes)} clozes.")
+    # Group sentences into units of 100 each.
+    units: list[list[Cloze]] = group(clozes, 100)
+    print(f"Dumping {len(units)} units.")
+    for (unit_id, unit) in enumerate(units):
+        with open(f"output/unit_{unit_id}.csv", "w") as stream:
+            writer = csv.writer(stream, delimiter=",", quotechar="\"", quoting=csv.QUOTE_ALL, lineterminator='\n')
+            writer.writerow(["English","French"])
+            for cloze in unit:
+                writer.writerow([cloze.eng, cloze.fra])
 
-
+def group(lst, n):
+    result = []
+    for i in range(0, len(lst), n):
+        result.append(lst[i:i + n])
+    return result
 
 
 
@@ -162,11 +180,7 @@ def avg_freq(words: list[str], tbl: Counter[str]) -> float:
     """
     return sum(tbl[w] for w in words)/len(words)
 
-def group(lst, n):
-    result = []
-    for i in range(0, len(lst), n):
-        result.append(lst[i:i + n])
-    return result
+
 
 
 
@@ -243,17 +257,7 @@ def main():
     print(f"Skipped {skipped_freq} clozes because the word was under the frequency limit.")
     dump_clozes(clozes)
 
-def dump_clozes(clozes: list[Cloze]):
-    print(f"Compiled {len(clozes)} clozes.")
-    # Group sentences into units of 100 each.
-    units: list[list[Cloze]] = group(clozes, 100)
-    print(f"Dumping {len(units)} units.")
-    for (unit_id, unit) in enumerate(units):
-        with open(f"output/unit_{unit_id}.csv", "w") as stream:
-            writer = csv.writer(stream, delimiter=",", quotechar="\"", quoting=csv.QUOTE_ALL, lineterminator='\n')
-            writer.writerow(["English","French"])
-            for cloze in unit:
-                writer.writerow([cloze.eng, cloze.fra])
+
 
 if __name__ == "__main__":
     main()
