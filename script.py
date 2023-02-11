@@ -11,6 +11,7 @@ from dataclasses import dataclass
 # Pair
 #
 
+
 @dataclass(frozen=True)
 class Pair:
     eng: str
@@ -18,11 +19,13 @@ class Pair:
     fra: str
     fra_words: list[str]
 
+
 def dump_pair(p: Pair):
     print(f"\teng={p.eng}")
     print(f"\teng_words={p.eng_words}")
     print(f"\tfra={p.fra}")
     print(f"\tfra_words={p.fra_words}")
+
 
 #
 # Split sentences
@@ -30,8 +33,10 @@ def dump_pair(p: Pair):
 
 WORD_BOUNDARY: re.Pattern[str] = re.compile(r"""[ ,\.!?"]""")
 
+
 def words(line: str) -> list[str]:
     return [w.strip() for w in re.split(WORD_BOUNDARY, line) if w.strip()]
+
 
 #
 # Parse sentences
@@ -41,13 +46,14 @@ FILE: str = "Sentence pairs in English-French - 2023-02-06.tsv"
 
 WORD_LIMIT: int = 10
 
+
 def parse_sentences():
     """
     Parse sentence pairs.
     """
     pairs: list[Pair] = []
     with open(FILE, "r") as stream:
-        reader = csv.reader(stream, delimiter='\t')
+        reader = csv.reader(stream, delimiter="\t")
         for row in reader:
             eng: str = row[1].strip()
             fra: str = row[3].strip()
@@ -66,9 +72,11 @@ def parse_sentences():
     print(f"Found {len(pairs):,} sentence pairs.")
     return pairs
 
+
 #
 # Language frequency tables
 #
+
 
 def language_frequency_table(sentences: list[list[str]]) -> Counter[str]:
     """
@@ -85,13 +93,16 @@ def language_frequency_table(sentences: list[list[str]]) -> Counter[str]:
     print(f"\tAverage English frequency: {counter_avg(table)}")
     return table
 
+
 def most_common(c: Counter[str]) -> str:
     return c.most_common(1)[0][0]
+
 
 def least_common(c: Counter[str]) -> str:
     min_frequency = min(c.values())
     least_common_items = [item for item, count in c.items() if count == min_frequency]
     return least_common_items[0]
+
 
 def counter_avg(c: Counter) -> float:
     total = sum(c.values())
@@ -99,18 +110,22 @@ def counter_avg(c: Counter) -> float:
     average_frequency = total / n
     return average_frequency
 
+
 #
 # Frequency cutoff
 #
 
 MOST_COMMON_WORDS_CUTOFF: float = 5000
 
+
 def freq_cutoff(c: Counter) -> float:
     return c.most_common(MOST_COMMON_WORDS_CUTOFF)[-1]
+
 
 #
 # Sorting
 #
+
 
 def sort_pairs(pairs: list[Pair], fra_freq: Counter[str]) -> list[Pair]:
     """
@@ -118,29 +133,35 @@ def sort_pairs(pairs: list[Pair], fra_freq: Counter[str]) -> list[Pair]:
     sort by the average frequency of the words in the French sentence, divided
     by the length of the sentence, in reverse order.
     """
-    return sorted(pairs, key=lambda p: avg_freq(p.fra_words, fra_freq) / len(p.fra_words), reverse=True)
+    return sorted(
+        pairs,
+        key=lambda p: avg_freq(p.fra_words, fra_freq) / len(p.fra_words),
+        reverse=True,
+    )
+
 
 def avg_freq(words: list[str], tbl: Counter[str]) -> float:
     """
     Return the average frequency for the words.
     """
-    return sum(tbl[w] for w in words)/len(words)
+    return sum(tbl[w] for w in words) / len(words)
+
 
 #
 # Build Clozes
 #
 
 # List of French sentences to skip.
-SKIP_LIST: list[str] = [
-    "Eu cheguei ontem."
-]
+SKIP_LIST: list[str] = ["Eu cheguei ontem."]
 
 CLOZE_LIMIT: int = 5
+
 
 @dataclass(frozen=True)
 class Cloze:
     eng: str
     fra: str
+
 
 def minimize(lst, fn):
     """
@@ -156,7 +177,14 @@ def minimize(lst, fn):
             smallest_value = val
     return lst[smallest_index]
 
-def build_clozes(pairs: list[Pair], eng_freq: Counter[str], fra_freq: Counter[str], eng_freq_cutoff: float, fra_freq_cutoff: float) -> list[Cloze]:
+
+def build_clozes(
+    pairs: list[Pair],
+    eng_freq: Counter[str],
+    fra_freq: Counter[str],
+    eng_freq_cutoff: float,
+    fra_freq_cutoff: float,
+) -> list[Cloze]:
     clozes: list[Cloze] = []
     # Track French sentences we've seen, so we don't make duplicates.
     seen_fra: set[str] = set()
@@ -168,7 +196,9 @@ def build_clozes(pairs: list[Pair], eng_freq: Counter[str], fra_freq: Counter[st
     skipped_freq: int = 0
     for pair in pairs:
         # Don't print multiple clozes for the same French text.
-        stripped_fra: str = pair.fra.replace("!", "").replace(".", "").replace(",", "").strip()
+        stripped_fra: str = (
+            pair.fra.replace("!", "").replace(".", "").replace(",", "").strip()
+        )
         if stripped_fra in seen_fra:
             continue
         else:
@@ -201,12 +231,16 @@ def build_clozes(pairs: list[Pair], eng_freq: Counter[str], fra_freq: Counter[st
             clozes.append(cloze_fra)
             cloze_count_fra.update({rarest_fra: 1})
     print(f"Skipped {skipped_limit} clozes because the word appeared too many times.")
-    print(f"Skipped {skipped_freq} clozes because the word was under the frequency limit.")
+    print(
+        f"Skipped {skipped_freq} clozes because the word was under the frequency limit."
+    )
     return clozes
+
 
 #
 # Dump clozes
 #
+
 
 def dump_clozes(clozes: list[Cloze]):
     print(f"Compiled {len(clozes)} clozes.")
@@ -215,29 +249,42 @@ def dump_clozes(clozes: list[Cloze]):
     print(f"Dumping {len(units)} units.")
     for (unit_id, unit) in enumerate(units):
         with open(f"output/unit_{unit_id}.csv", "w") as stream:
-            writer = csv.writer(stream, delimiter=",", quotechar="\"", quoting=csv.QUOTE_ALL, lineterminator='\n')
-            writer.writerow(["English","French"])
+            writer = csv.writer(
+                stream,
+                delimiter=",",
+                quotechar='"',
+                quoting=csv.QUOTE_ALL,
+                lineterminator="\n",
+            )
+            writer.writerow(["English", "French"])
             for cloze in unit:
                 writer.writerow([cloze.eng, cloze.fra])
+
 
 def group(lst, n):
     result = []
     for i in range(0, len(lst), n):
-        result.append(lst[i:i + n])
+        result.append(lst[i : i + n])
     return result
+
 
 #
 # Put together
 #
+
 
 def main():
     # Parse sentence pairs.
     pairs: list[Pair] = parse_sentences()
     # Building frequency table.
     print("English frequency table:")
-    eng_freq: Counter[str] = language_frequency_table([pair.eng_words for pair in pairs])
+    eng_freq: Counter[str] = language_frequency_table(
+        [pair.eng_words for pair in pairs]
+    )
     print("French frequency table:")
-    fra_freq: Counter[str] = language_frequency_table([pair.fra_words for pair in pairs])
+    fra_freq: Counter[str] = language_frequency_table(
+        [pair.fra_words for pair in pairs]
+    )
     # Find the frequency cutoff.
     eng_cutoff = freq_cutoff(eng_freq)
     fra_cutoff = freq_cutoff(fra_freq)
@@ -254,8 +301,11 @@ def main():
     print("Last sentence:")
     dump_pair(pairs[-1])
     # Build clozes.
-    clozes: list[Cloze] = build_clozes(pairs, eng_freq, fra_freq, eng_freq_cutoff, fra_freq_cutoff)
+    clozes: list[Cloze] = build_clozes(
+        pairs, eng_freq, fra_freq, eng_freq_cutoff, fra_freq_cutoff
+    )
     dump_clozes(clozes)
+
 
 if __name__ == "__main__":
     main()
