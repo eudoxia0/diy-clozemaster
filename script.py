@@ -7,11 +7,64 @@ import re
 from collections import Counter
 from dataclasses import dataclass
 
-FILE: str = "Sentence pairs in English-French - 2023-02-06.tsv"
+#
+# Pair
+#
+
+@dataclass(frozen=True)
+class Pair:
+    eng: str
+    eng_words: list[str]
+    fra: str
+    fra_words: list[str]
+
+def dump_pair(p: Pair):
+    print(f"\teng={p.eng}")
+    print(f"\teng_words={p.eng_words}")
+    print(f"\tfra={p.fra}")
+    print(f"\tfra_words={p.fra_words}")
+
+#
+# Split sentences
+#
 
 WORD_BOUNDARY: re.Pattern[str] = re.compile(r"""[ ,\.!?"]""")
 
+def words(line: str) -> list[str]:
+    return [w.strip() for w in re.split(WORD_BOUNDARY, line) if w.strip()]
+
+#
+# Parse sentences
+#
+
+FILE: str = "Sentence pairs in English-French - 2023-02-06.tsv"
+
 WORD_LIMIT: int = 10
+
+def parse_sentences():
+    """
+    Parse sentence pairs.
+    """
+    pairs: list[Pair] = []
+    with open(FILE, "r") as stream:
+        reader = csv.reader(stream, delimiter='\t')
+        for row in reader:
+            eng: str = row[1].strip()
+            fra: str = row[3].strip()
+            if fra in SKIP_LIST:
+                continue
+            eng_words: list[str] = words(eng)
+            fra_words: list[str] = words(fra)
+            if len(fra_words) <= WORD_LIMIT:
+                pair: Pair = Pair(
+                    eng=eng,
+                    eng_words=eng_words,
+                    fra=fra,
+                    fra_words=fra_words,
+                )
+                pairs.append(pair)
+    print(f"Found {len(pairs):,} sentence pairs.")
+    return pairs
 
 # List of French sentences to skip.
 SKIP_LIST: list[str] = [
@@ -20,14 +73,9 @@ SKIP_LIST: list[str] = [
 
 CLOZE_LIMIT: int = 5
 
-MOST_COMMON_WORDS_CUTOFF: float = 3000
+MOST_COMMON_WORDS_CUTOFF: float = 5000
 
-@dataclass(frozen=True)
-class Pair:
-    eng: str
-    eng_words: list[str]
-    fra: str
-    fra_words: list[str]
+
 
 @dataclass(frozen=True)
 class Cloze:
@@ -42,14 +90,27 @@ def least_common(c: Counter[str]) -> str:
     least_common_items = [item for item, count in c.items() if count == min_frequency]
     return least_common_items[0]
 
-def words(line: str) -> list[str]:
-    return [w.strip() for w in re.split(WORD_BOUNDARY, line) if w.strip()]
 
-def dump_pair(p: Pair):
-    print(f"\teng={p.eng}")
-    print(f"\teng_words={p.eng_words}")
-    print(f"\tfra={p.fra}")
-    print(f"\tfra_words={p.fra_words}")
+def language_frequency_table(sentences: list[list[str]]) -> Counter[str]:
+    """
+    Given a list of sentences (lists of words), build up a frequency table.
+    """
+    table: Counter[str] = Counter()
+    for sentence in sentences:
+        table.update(sentence)
+    print(f"\tFound {len(table)} words.")
+    first = most_common(table)
+    last = least_common(table)
+    print(f"\tMost common: '{first}' ({table[first]}).")
+    print(f"\tLeast common: '{last}' ({table[last]}).")
+    print(f"\tAverage English frequency: {counter_avg(table)}")
+    return table
+
+def counter_avg(c: Counter) -> float:
+    total = sum(c.values())
+    n = len(c)
+    average_frequency = total / n
+    return average_frequency
 
 def minimize(lst, fn):
     """
@@ -77,50 +138,21 @@ def group(lst, n):
         result.append(lst[i:i + n])
     return result
 
-def counter_avg(c: Counter) -> float:
-    total = sum(c.values())
-    n = len(c)
-    average_frequency = total / n
-    return average_frequency
-
 def freq_cutoff(c: Counter) -> float:
     return c.most_common(MOST_COMMON_WORDS_CUTOFF)[-1]
 
+def sort_pairs(pairs: list[Pair], fra_freq: Counter[str]) -> list[Pair]:
+    # Sort pairs from shortest and most common French words. Specifically, we sort by the average frequency of the words in the French sentence, divided by the length of the sentence, in reverse order.
+    return sorted(pairs, key=lambda p: avg_freq(p.fra_words, fra_freq) / len(p.fra_words), reverse=True)
+
 def main():
     # Parse sentence pairs.
-    pairs: list[Pair] = []
-    with open(FILE, "r") as stream:
-        reader = csv.reader(stream, delimiter='\t')
-        for row in reader:
-            eng: str = row[1].strip()
-            fra: str = row[3].strip()
-            if fra in SKIP_LIST:
-                continue
-            eng_words: list[str] = words(eng)
-            fra_words: list[str] = words(fra)
-            if len(fra_words) <= WORD_LIMIT:
-                pair: Pair = Pair(
-                    eng=eng,
-                    eng_words=eng_words,
-                    fra=fra,
-                    fra_words=fra_words,
-                )
-                pairs.append(pair)
-    print(f"Found {len(pairs):,} sentence pairs.")
+    pairs: list[Pair] = parse_sentences()
     # Building frequency table.
-    eng_freq: Counter[str] = Counter()
-    fra_freq: Counter[str] = Counter()
-    for pair in pairs:
-        eng_freq.update(pair.eng_words)
-        fra_freq.update(pair.fra_words)
-    print(f"Found {len(eng_freq)} English words.")
-    print(f"\tMost common: '{most_common(eng_freq)}' ({eng_freq[most_common(eng_freq)]}).")
-    print(f"\tLeast common: '{least_common(eng_freq)}' ({eng_freq[least_common(eng_freq)]}).")
-    print(f"Found {len(fra_freq)} French words.")
-    print(f"\tMost common: '{most_common(fra_freq)}' ({fra_freq[most_common(fra_freq)]}).")
-    print(f"\tLeast common: '{least_common(fra_freq)}' ({fra_freq[least_common(fra_freq)]}).")
-    print(f"Average English frequency: {counter_avg(eng_freq)}")
-    print(f"Average French frequency: {counter_avg(fra_freq)}")
+    print("English frequency table:")
+    eng_freq: Counter[str] = language_frequency_table([pair.eng_words for pair in pairs])
+    print("French frequency table:")
+    fra_freq: Counter[str] = language_frequency_table([pair.fra_words for pair in pairs])
     # Find the frequency cutoff.
     eng_cutoff = freq_cutoff(eng_freq)
     fra_cutoff = freq_cutoff(fra_freq)
@@ -128,9 +160,8 @@ def main():
     print(f"French cutoff: {fra_cutoff}")
     eng_freq_cutoff: float = eng_cutoff[1]
     fra_freq_cutoff: float = fra_cutoff[1]
-    # Sort pairs from shortest and most common French words. Specifically, we sort by the average frequency of the words in the French sentence, divided by the length of the sentence, in reverse order.
     print("Sorting...")
-    pairs = sorted(pairs, key=lambda p: avg_freq(p.fra_words, fra_freq) / len(p.fra_words), reverse=True)
+    pairs = sort_pairs(pairs, fra_freq)
     print("\tDone")
     # Print first and last sentences.
     print("First sentence:")
@@ -183,7 +214,9 @@ def main():
             cloze_count_fra.update({rarest_fra: 1})
     print(f"Skipped {skipped_limit} clozes because the word appeared too many times.")
     print(f"Skipped {skipped_freq} clozes because the word was under the frequency limit.")
-    # Dump clozes.
+    dump_clozes(clozes)
+
+def dump_clozes(clozes: list[Cloze]):
     print(f"Compiled {len(clozes)} clozes.")
     # Group sentences into units of 100 each.
     units: list[list[Cloze]] = group(clozes, 100)
