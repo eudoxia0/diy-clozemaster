@@ -20,12 +20,11 @@ class Pair:
     fra: str
     fra_words: list[str]
 
-
-def dump_pair(p: Pair):
-    print(f"\teng={p.eng}")
-    print(f"\teng_words={p.eng_words}")
-    print(f"\tfra={p.fra}")
-    print(f"\tfra_words={p.fra_words}")
+    def dump(self):
+        print(f"\teng={self.eng}")
+        print(f"\teng_words={self.eng_words}")
+        print(f"\tfra={self.fra}")
+        print(f"\tfra_words={self.fra_words}")
 
 
 #
@@ -271,7 +270,7 @@ def dump_clozes(clozes: list[Cloze]):
 def group(lst, n):
     result = []
     for i in range(0, len(lst), n):
-        result.append(lst[i:i + n])
+        result.append(lst[i : i + n])
     return result
 
 
@@ -304,9 +303,9 @@ def main():
     print("\tDone")
     # Print first and last sentences.
     print("First sentence:")
-    dump_pair(pairs[0])
+    pairs[0].dump()
     print("Last sentence:")
-    dump_pair(pairs[-1])
+    pairs[-1].dump()
     # Build clozes.
     clozes: list[Cloze] = build_clozes(
         pairs, eng_freq, fra_freq, eng_freq_cutoff, fra_freq_cutoff
