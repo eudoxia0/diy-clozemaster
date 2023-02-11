@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 """
-Generates a CSV of flashcards for import into Mochi from Tatoeba sentence pairs.
+Generates a CSV of flashcards for import into Mochi from Tatoeba sentence
+pairs.
 """
 import csv
 import re
@@ -100,7 +101,9 @@ def most_common(c: Counter[str]) -> str:
 
 def least_common(c: Counter[str]) -> str:
     min_frequency = min(c.values())
-    least_common_items = [item for item, count in c.items() if count == min_frequency]
+    least_common_items = [
+        item for item, count in c.items() if count == min_frequency
+    ]
     return least_common_items[0]
 
 
@@ -188,8 +191,8 @@ def build_clozes(
     clozes: list[Cloze] = []
     # Track French sentences we've seen, so we don't make duplicates.
     seen_fra: set[str] = set()
-    # Track how many times we've made a cloze for each word. We don't need too many
-    # clozes per word.
+    # Track how many times we've made a cloze for each word. We don't need too
+    # many clozes per word.
     cloze_count_fra: Counter[str] = Counter()
     cloze_count_eng: Counter[str] = Counter()
     skipped_limit: int = 0
@@ -230,9 +233,13 @@ def build_clozes(
             )
             clozes.append(cloze_fra)
             cloze_count_fra.update({rarest_fra: 1})
-    print(f"Skipped {skipped_limit} clozes because the word appeared too many times.")
     print(
-        f"Skipped {skipped_freq} clozes because the word was under the frequency limit."
+        f"Skipped {skipped_limit} clozes because the word appeared too many "
+        "times."
+    )
+    print(
+        f"Skipped {skipped_freq} clozes because the word was under the "
+        "frequency limit."
     )
     return clozes
 
@@ -264,7 +271,7 @@ def dump_clozes(clozes: list[Cloze]):
 def group(lst, n):
     result = []
     for i in range(0, len(lst), n):
-        result.append(lst[i : i + n])
+        result.append(lst[i:i + n])
     return result
 
 
