@@ -66,30 +66,9 @@ def parse_sentences():
     print(f"Found {len(pairs):,} sentence pairs.")
     return pairs
 
-# List of French sentences to skip.
-SKIP_LIST: list[str] = [
-    "Eu cheguei ontem."
-]
-
-CLOZE_LIMIT: int = 5
-
-MOST_COMMON_WORDS_CUTOFF: float = 5000
-
-
-
-@dataclass(frozen=True)
-class Cloze:
-    eng: str
-    fra: str
-
-def most_common(c: Counter[str]) -> str:
-    return c.most_common(1)[0][0]
-
-def least_common(c: Counter[str]) -> str:
-    min_frequency = min(c.values())
-    least_common_items = [item for item, count in c.items() if count == min_frequency]
-    return least_common_items[0]
-
+#
+# Language frequency tables
+#
 
 def language_frequency_table(sentences: list[list[str]]) -> Counter[str]:
     """
@@ -106,11 +85,62 @@ def language_frequency_table(sentences: list[list[str]]) -> Counter[str]:
     print(f"\tAverage English frequency: {counter_avg(table)}")
     return table
 
+def most_common(c: Counter[str]) -> str:
+    return c.most_common(1)[0][0]
+
+def least_common(c: Counter[str]) -> str:
+    min_frequency = min(c.values())
+    least_common_items = [item for item, count in c.items() if count == min_frequency]
+    return least_common_items[0]
+
 def counter_avg(c: Counter) -> float:
     total = sum(c.values())
     n = len(c)
     average_frequency = total / n
     return average_frequency
+
+#
+# Frequency cutoff
+#
+
+MOST_COMMON_WORDS_CUTOFF: float = 5000
+
+def freq_cutoff(c: Counter) -> float:
+    return c.most_common(MOST_COMMON_WORDS_CUTOFF)[-1]
+
+#
+# Sorting
+#
+
+def sort_pairs(pairs: list[Pair], fra_freq: Counter[str]) -> list[Pair]:
+    # Sort pairs from shortest and most common French words. Specifically, we sort by the average frequency of the words in the French sentence, divided by the length of the sentence, in reverse order.
+    return sorted(pairs, key=lambda p: avg_freq(p.fra_words, fra_freq) / len(p.fra_words), reverse=True)
+
+
+
+
+
+
+
+
+
+# List of French sentences to skip.
+SKIP_LIST: list[str] = [
+    "Eu cheguei ontem."
+]
+
+CLOZE_LIMIT: int = 5
+
+
+
+
+@dataclass(frozen=True)
+class Cloze:
+    eng: str
+    fra: str
+
+
+
 
 def minimize(lst, fn):
     """
@@ -138,12 +168,9 @@ def group(lst, n):
         result.append(lst[i:i + n])
     return result
 
-def freq_cutoff(c: Counter) -> float:
-    return c.most_common(MOST_COMMON_WORDS_CUTOFF)[-1]
 
-def sort_pairs(pairs: list[Pair], fra_freq: Counter[str]) -> list[Pair]:
-    # Sort pairs from shortest and most common French words. Specifically, we sort by the average frequency of the words in the French sentence, divided by the length of the sentence, in reverse order.
-    return sorted(pairs, key=lambda p: avg_freq(p.fra_words, fra_freq) / len(p.fra_words), reverse=True)
+
+
 
 def main():
     # Parse sentence pairs.
