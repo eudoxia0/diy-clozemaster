@@ -127,28 +127,6 @@ def avg_freq(words: list[str], tbl: Counter[str]) -> float:
     return sum(tbl[w] for w in words)/len(words)
 
 #
-# Dump clozes
-#
-
-def dump_clozes(clozes: list[Cloze]):
-    print(f"Compiled {len(clozes)} clozes.")
-    # Group sentences into units of 100 each.
-    units: list[list[Cloze]] = group(clozes, 100)
-    print(f"Dumping {len(units)} units.")
-    for (unit_id, unit) in enumerate(units):
-        with open(f"output/unit_{unit_id}.csv", "w") as stream:
-            writer = csv.writer(stream, delimiter=",", quotechar="\"", quoting=csv.QUOTE_ALL, lineterminator='\n')
-            writer.writerow(["English","French"])
-            for cloze in unit:
-                writer.writerow([cloze.eng, cloze.fra])
-
-def group(lst, n):
-    result = []
-    for i in range(0, len(lst), n):
-        result.append(lst[i:i + n])
-    return result
-
-#
 # Build Clozes
 #
 
@@ -225,6 +203,28 @@ def build_clozes(pairs: list[Pair], eng_freq: Counter[str], fra_freq: Counter[st
     print(f"Skipped {skipped_limit} clozes because the word appeared too many times.")
     print(f"Skipped {skipped_freq} clozes because the word was under the frequency limit.")
     return clozes
+
+#
+# Dump clozes
+#
+
+def dump_clozes(clozes: list[Cloze]):
+    print(f"Compiled {len(clozes)} clozes.")
+    # Group sentences into units of 100 each.
+    units: list[list[Cloze]] = group(clozes, 100)
+    print(f"Dumping {len(units)} units.")
+    for (unit_id, unit) in enumerate(units):
+        with open(f"output/unit_{unit_id}.csv", "w") as stream:
+            writer = csv.writer(stream, delimiter=",", quotechar="\"", quoting=csv.QUOTE_ALL, lineterminator='\n')
+            writer.writerow(["English","French"])
+            for cloze in unit:
+                writer.writerow([cloze.eng, cloze.fra])
+
+def group(lst, n):
+    result = []
+    for i in range(0, len(lst), n):
+        result.append(lst[i:i + n])
+    return result
 
 #
 # Put together
