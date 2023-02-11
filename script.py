@@ -113,8 +113,18 @@ def freq_cutoff(c: Counter) -> float:
 #
 
 def sort_pairs(pairs: list[Pair], fra_freq: Counter[str]) -> list[Pair]:
-    # Sort pairs from shortest and most common French words. Specifically, we sort by the average frequency of the words in the French sentence, divided by the length of the sentence, in reverse order.
+    """
+    Sort pairs from shortest and most common French words. Specifically, we
+    sort by the average frequency of the words in the French sentence, divided
+    by the length of the sentence, in reverse order.
+    """
     return sorted(pairs, key=lambda p: avg_freq(p.fra_words, fra_freq) / len(p.fra_words), reverse=True)
+
+def avg_freq(words: list[str], tbl: Counter[str]) -> float:
+    """
+    Return the average frequency for the words.
+    """
+    return sum(tbl[w] for w in words)/len(words)
 
 #
 # Dump clozes
@@ -138,9 +148,9 @@ def group(lst, n):
         result.append(lst[i:i + n])
     return result
 
-
-
-
+#
+# Build Clozes
+#
 
 # List of French sentences to skip.
 SKIP_LIST: list[str] = [
@@ -149,16 +159,10 @@ SKIP_LIST: list[str] = [
 
 CLOZE_LIMIT: int = 5
 
-
-
-
 @dataclass(frozen=True)
 class Cloze:
     eng: str
     fra: str
-
-
-
 
 def minimize(lst, fn):
     """
@@ -174,42 +178,7 @@ def minimize(lst, fn):
             smallest_value = val
     return lst[smallest_index]
 
-def avg_freq(words: list[str], tbl: Counter[str]) -> float:
-    """
-    Return the average frequency for the words.
-    """
-    return sum(tbl[w] for w in words)/len(words)
-
-
-
-
-
-
-
-def main():
-    # Parse sentence pairs.
-    pairs: list[Pair] = parse_sentences()
-    # Building frequency table.
-    print("English frequency table:")
-    eng_freq: Counter[str] = language_frequency_table([pair.eng_words for pair in pairs])
-    print("French frequency table:")
-    fra_freq: Counter[str] = language_frequency_table([pair.fra_words for pair in pairs])
-    # Find the frequency cutoff.
-    eng_cutoff = freq_cutoff(eng_freq)
-    fra_cutoff = freq_cutoff(fra_freq)
-    print(f"English cutoff: {eng_cutoff}")
-    print(f"French cutoff: {fra_cutoff}")
-    eng_freq_cutoff: float = eng_cutoff[1]
-    fra_freq_cutoff: float = fra_cutoff[1]
-    print("Sorting...")
-    pairs = sort_pairs(pairs, fra_freq)
-    print("\tDone")
-    # Print first and last sentences.
-    print("First sentence:")
-    dump_pair(pairs[0])
-    print("Last sentence:")
-    dump_pair(pairs[-1])
-    # Build clozes.
+def build_clozes(pairs: list[Pair], eng_freq: Counter[str], fra_freq: Counter[str], eng_freq_cutoff: float, fra_freq_cutoff: float) -> list[Cloze]:
     clozes: list[Cloze] = []
     # Track French sentences we've seen, so we don't make duplicates.
     seen_fra: set[str] = set()
@@ -255,9 +224,38 @@ def main():
             cloze_count_fra.update({rarest_fra: 1})
     print(f"Skipped {skipped_limit} clozes because the word appeared too many times.")
     print(f"Skipped {skipped_freq} clozes because the word was under the frequency limit.")
+    return clozes
+
+#
+# Put together
+#
+
+def main():
+    # Parse sentence pairs.
+    pairs: list[Pair] = parse_sentences()
+    # Building frequency table.
+    print("English frequency table:")
+    eng_freq: Counter[str] = language_frequency_table([pair.eng_words for pair in pairs])
+    print("French frequency table:")
+    fra_freq: Counter[str] = language_frequency_table([pair.fra_words for pair in pairs])
+    # Find the frequency cutoff.
+    eng_cutoff = freq_cutoff(eng_freq)
+    fra_cutoff = freq_cutoff(fra_freq)
+    print(f"English cutoff: {eng_cutoff}")
+    print(f"French cutoff: {fra_cutoff}")
+    eng_freq_cutoff: float = eng_cutoff[1]
+    fra_freq_cutoff: float = fra_cutoff[1]
+    print("Sorting...")
+    pairs = sort_pairs(pairs, fra_freq)
+    print("\tDone")
+    # Print first and last sentences.
+    print("First sentence:")
+    dump_pair(pairs[0])
+    print("Last sentence:")
+    dump_pair(pairs[-1])
+    # Build clozes.
+    clozes: list[Cloze] = build_clozes(pairs, eng_freq, fra_freq, eng_freq_cutoff, fra_freq_cutoff)
     dump_clozes(clozes)
-
-
 
 if __name__ == "__main__":
     main()
