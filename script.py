@@ -209,7 +209,7 @@ def build_clozes(
         rarest_eng: str = minimize(pair.eng_words, lambda w: eng_freq[w])
         rarest_fra: str = minimize(pair.fra_words, lambda w: fra_freq[w])
         # Cloze the English word.
-        if cloze_count_eng[rarest_eng] >= CLOZE_LIMIT:
+        if cloze_count_eng[rarest_eng] == CLOZE_LIMIT:
             skipped_limit += 1
         elif eng_freq[rarest_eng] < eng_freq_cutoff:
             skipped_freq += 1
@@ -221,7 +221,7 @@ def build_clozes(
             clozes.append(cloze_eng)
             cloze_count_eng.update({rarest_eng: 1})
         # Cloze the French word.
-        if cloze_count_fra[rarest_fra] > CLOZE_LIMIT:
+        if cloze_count_fra[rarest_fra] == CLOZE_LIMIT:
             skipped_limit += 1
         elif fra_freq[rarest_fra] < fra_freq_cutoff:
             skipped_freq += 1
