@@ -31,11 +31,13 @@ class Pair:
 # Split sentences
 #
 
-WORD_BOUNDARY: re.Pattern[str] = re.compile(r"""[ ,\.!?"]""")
+WORD_BOUNDARY: re.Pattern[str] = re.compile(r"""[\s,\.!?"]""")
 
 
 def words(line: str) -> list[str]:
-    return [w.strip() for w in re.split(WORD_BOUNDARY, line) if w.strip()]
+    l = [w.strip() for w in re.split(WORD_BOUNDARY, line) if w.strip()]
+    l = [w for w in l if w == w.lower()]
+    return l
 
 
 #
@@ -57,6 +59,8 @@ def parse_sentences():
         for row in reader:
             eng: str = row[1].strip().lower()
             fra: str = row[3].strip().lower()
+            eng = eng[0].lower() + eng[1:]
+            fra = fra[0].lower() + fra[1:]
             if fra in SKIP_LIST:
                 continue
             eng_words: list[str] = words(eng)
