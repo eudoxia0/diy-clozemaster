@@ -35,7 +35,10 @@ WORD_BOUNDARY: re.Pattern[str] = re.compile(r"""[\s,\.!?"]""")
 
 
 def words(line: str) -> list[str]:
-    return [w.strip() for w in re.split(WORD_BOUNDARY, line) if w.strip()]
+    l = [w.strip() for w in re.split(WORD_BOUNDARY, line) if w.strip()]
+    # Skip numbers.
+    l = [w for w in l if not w.isdigit()]
+    return l
 
 
 #
@@ -61,14 +64,19 @@ def parse_sentences():
                 continue
             eng_words: list[str] = words(eng)
             fra_words: list[str] = words(fra)
-            if len(fra_words) <= WORD_LIMIT:
-                pair: Pair = Pair(
-                    eng=eng,
-                    eng_words=eng_words,
-                    fra=fra,
-                    fra_words=fra_words,
-                )
-                pairs.append(pair)
+            # Skip long sentences.
+            if len(fra_words) > WORD_LIMIT:
+                continue
+            # Skip if there are no proper words.
+            if (not eng_words) or (not fra_words):
+                continue
+            pair: Pair = Pair(
+                eng=eng,
+                eng_words=eng_words,
+                fra=fra,
+                fra_words=fra_words,
+            )
+            pairs.append(pair)
     print(f"Found {len(pairs):,} sentence pairs.")
     return pairs
 
