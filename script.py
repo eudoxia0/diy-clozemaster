@@ -35,9 +35,7 @@ WORD_BOUNDARY: re.Pattern[str] = re.compile(r"""[\s,\.!?"]""")
 
 
 def words(line: str) -> list[str]:
-    l = [w.strip() for w in re.split(WORD_BOUNDARY, line) if w.strip()]
-    l = [w for w in l if w == w.lower()]
-    return l
+    return [w.strip() for w in re.split(WORD_BOUNDARY, line) if w.strip()]
 
 
 #
@@ -59,8 +57,6 @@ def parse_sentences():
         for row in reader:
             eng: str = row[1].strip().lower()
             fra: str = row[3].strip().lower()
-            eng = eng[0].lower() + eng[1:]
-            fra = fra[0].lower() + fra[1:]
             if fra in SKIP_LIST:
                 continue
             eng_words: list[str] = words(eng)
@@ -124,8 +120,8 @@ def counter_avg(c: Counter) -> float:
 MOST_COMMON_WORDS_CUTOFF: float = 5000
 
 
-def freq_cutoff(c: Counter) -> float:
-    return c.most_common(MOST_COMMON_WORDS_CUTOFF)[-1]
+def most_common_words(c: Counter) -> set[str]:
+    return set([p[0] for p in c.most_common(MOST_COMMON_WORDS_CUTOFF)])
 
 
 #
@@ -152,6 +148,26 @@ def avg_freq(words: list[str], tbl: Counter[str]) -> float:
     """
     return sum(tbl[w] for w in words) / len(words)
 
+#
+# Remove duplicates
+#
+
+def remove_duplicates(pairs: list[Pair]) -> list[Pair]:
+    result: list[Pair] = []
+    # Track French sentences we've seen, so we don't make duplicates.
+    seen_fra: set[str] = set()
+    skipped: int = 0
+    for pair in pairs:
+        stripped_fra: str = (
+            pair.fra.replace("!", "").replace(".", "").replace(",", "").strip()
+        )
+        if stripped_fra in seen_fra:
+            skipped += 1
+        else:
+            result.append(pair)
+            seen_fra.add(stripped_fra)
+    print(f"Skipped {skipped} sentence pairs that had the same French text.")
+    return pairs
 
 #
 # Build Clozes
@@ -160,7 +176,7 @@ def avg_freq(words: list[str], tbl: Counter[str]) -> float:
 # List of French sentences to skip.
 SKIP_LIST: list[str] = ["Eu cheguei ontem."]
 
-CLOZE_LIMIT: int = 5
+CLOZE_LIMIT: int = 3
 
 
 @dataclass(frozen=True)
@@ -188,12 +204,10 @@ def build_clozes(
     pairs: list[Pair],
     eng_freq: Counter[str],
     fra_freq: Counter[str],
-    eng_freq_cutoff: float,
-    fra_freq_cutoff: float,
+    eng_common: set[str],
+    fra_common: set[str],
 ) -> list[Cloze]:
     clozes: list[Cloze] = []
-    # Track French sentences we've seen, so we don't make duplicates.
-    seen_fra: set[str] = set()
     # Track how many times we've made a cloze for each word. We don't need too
     # many clozes per word.
     cloze_count_fra: Counter[str] = Counter()
@@ -201,21 +215,13 @@ def build_clozes(
     skipped_limit: int = 0
     skipped_freq: int = 0
     for pair in pairs:
-        # Don't print multiple clozes for the same French text.
-        stripped_fra: str = (
-            pair.fra.replace("!", "").replace(".", "").replace(",", "").strip()
-        )
-        if stripped_fra in seen_fra:
-            continue
-        else:
-            seen_fra.add(stripped_fra)
         # Find the rarest words in English and French.
         rarest_eng: str = minimize(pair.eng_words, lambda w: eng_freq[w])
         rarest_fra: str = minimize(pair.fra_words, lambda w: fra_freq[w])
         # Cloze the English word.
         if cloze_count_eng[rarest_eng] == CLOZE_LIMIT:
             skipped_limit += 1
-        elif eng_freq[rarest_eng] < eng_freq_cutoff:
+        elif rarest_eng not in eng_common:
             skipped_freq += 1
         else:
             cloze_eng: Cloze = Cloze(
@@ -227,7 +233,7 @@ def build_clozes(
         # Cloze the French word.
         if cloze_count_fra[rarest_fra] == CLOZE_LIMIT:
             skipped_limit += 1
-        elif fra_freq[rarest_fra] < fra_freq_cutoff:
+        elif rarest_fra not in fra_common:
             skipped_freq += 1
         else:
             cloze_fra: Cloze = Cloze(
@@ -242,7 +248,7 @@ def build_clozes(
     )
     print(
         f"Skipped {skipped_freq} clozes because the word was under the "
-        "frequency limit."
+        "frequency cutoff."
     )
     return clozes
 
@@ -298,15 +304,11 @@ def main():
         [pair.fra_words for pair in pairs]
     )
     # Find the frequency cutoff.
-    eng_cutoff = freq_cutoff(eng_freq)
-    fra_cutoff = freq_cutoff(fra_freq)
-    print(f"English cutoff: {eng_cutoff}")
-    print(f"French cutoff: {fra_cutoff}")
-    eng_freq_cutoff: float = eng_cutoff[1]
-    fra_freq_cutoff: float = fra_cutoff[1]
+    eng_common = most_common_words(eng_freq)
+    fra_common = most_common_words(fra_freq)
     print("Sorting...")
     pairs = sort_pairs(pairs, fra_freq)
-    print("\tDone")
+    pairs = remove_duplicates(pairs)
     # Print first and last sentences.
     print("First sentence:")
     pairs[0].dump()
@@ -314,7 +316,7 @@ def main():
     pairs[-1].dump()
     # Build clozes.
     clozes: list[Cloze] = build_clozes(
-        pairs, eng_freq, fra_freq, eng_freq_cutoff, fra_freq_cutoff
+        pairs, eng_freq, fra_freq, eng_common, fra_common
     )
     dump_clozes(clozes)
 
