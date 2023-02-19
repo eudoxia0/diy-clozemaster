@@ -162,19 +162,25 @@ def avg_freq(words: list[str], tbl: Counter[str]) -> float:
 
 def remove_duplicates(pairs: list[Pair]) -> list[Pair]:
     result: list[Pair] = []
-    # Track French sentences we've seen, so we don't make duplicates.
+    seen_eng: set[str] = set()
     seen_fra: set[str] = set()
     skipped: int = 0
     for pair in pairs:
+        stripped_eng: str = (
+            pair.eng.replace("!", "").replace(".", "").replace(",", "").strip()
+        )
         stripped_fra: str = (
             pair.fra.replace("!", "").replace(".", "").replace(",", "").strip()
         )
-        if stripped_fra in seen_fra:
+        if stripped_eng in seen_eng:
+            skipped += 1
+        elif stripped_fra in seen_fra:
             skipped += 1
         else:
             result.append(pair)
+            seen_eng.add(stripped_eng)
             seen_fra.add(stripped_fra)
-    print(f"Skipped {skipped} sentence pairs that had the same French text.")
+    print(f"Skipped {skipped} sentence pairs that had the same text.")
     return pairs
 
 #
