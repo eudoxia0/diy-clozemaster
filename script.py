@@ -49,6 +49,8 @@ FILE: str = "Sentence pairs in English-French - 2023-02-06.tsv"
 
 WORD_LIMIT: int = 10
 
+# List of French sentences to skip.
+SKIP_LIST: list[str] = ["Eu cheguei ontem."]
 
 def parse_sentences():
     """
@@ -186,9 +188,6 @@ def remove_duplicates(pairs: list[Pair]) -> list[Pair]:
 #
 # Build Clozes
 #
-
-# List of French sentences to skip.
-SKIP_LIST: list[str] = ["Eu cheguei ontem."]
 
 CLOZE_LIMIT: int = 3
 
