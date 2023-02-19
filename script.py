@@ -55,8 +55,8 @@ def parse_sentences():
     with open(FILE, "r") as stream:
         reader = csv.reader(stream, delimiter="\t")
         for row in reader:
-            eng: str = row[1].strip()
-            fra: str = row[3].strip()
+            eng: str = row[1].strip().lower()
+            fra: str = row[3].strip().lower()
             if fra in SKIP_LIST:
                 continue
             eng_words: list[str] = words(eng)
@@ -264,7 +264,9 @@ def dump_clozes(clozes: list[Cloze]):
             )
             writer.writerow(["English", "French"])
             for cloze in unit:
-                writer.writerow([cloze.eng, cloze.fra])
+                writer.writerow(
+                    [cloze.eng.capitalize(), cloze.fra.capitalize()]
+                )
 
 
 def group(lst, n):
