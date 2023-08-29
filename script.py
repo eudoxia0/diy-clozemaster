@@ -183,7 +183,7 @@ def remove_duplicates(pairs: list[Pair]) -> list[Pair]:
             seen_eng.add(stripped_eng)
             seen_fra.add(stripped_fra)
     print(f"Skipped {skipped} sentence pairs that had the same text.")
-    return pairs
+    return result
 
 #
 # Build Clozes
